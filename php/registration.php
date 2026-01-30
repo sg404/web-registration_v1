@@ -479,6 +479,7 @@ require_once 'dbConnection.php';
       <h3>Registration Submitted Successfully!</h3>
       <p>Your application has been received and will be reviewed by an administrator.</p>
       <p>You will receive your unique registration code via email once your application is approved.</p>
+      <p id="submissionTiming" class="submission-timing" style="font-size:0.9em;color:#666;margin-top:8px;"></p>
       <button class="popup-btn" onclick="closePopup()">OK</button>
     </div>
   </div>

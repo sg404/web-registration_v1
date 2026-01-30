@@ -101,8 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uniqueCode = 'A' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
 
                 $approvalTime = date('Y-m-d H:i:s');
-                $stmt = $conn->prepare("INSERT INTO vehicleowner (OwnerID, fName, lName, mName, role, email, contact_num, college, course, year, section, academicYear, registrationStatus, approvalTimestamp, drivers_license) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)");
-                $stmt->bind_param("ssssssssssssss", $uniqueCode, $applicant['fName'], $applicant['lName'], $applicant['mName'], $applicant['role'], $applicant['email'], $applicant['contact_num'], $applicant['college'], $applicant['course'], $applicant['year'], $applicant['section'], $applicant['academicYear'], $approvalTime, $applicant['drivers_license']);
+                // Include schoolID, employment_type, and additional driver info to keep vehicleowner in sync with application
+                $stmt = $conn->prepare("INSERT INTO vehicleowner (OwnerID, schoolID, fName, lName, mName, role, employment_type, email, contact_num, college, course, year, section, academicYear, registrationStatus, approvalTimestamp, drivers_license, additional_driver_name, additional_driver_relationship) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)");
+                $stmt->bind_param("sssssssssssssssssss", $uniqueCode, $applicant['schoolID'], $applicant['fName'], $applicant['lName'], $applicant['mName'], $applicant['role'], $applicant['employment_type'], $applicant['email'], $applicant['contact_num'], $applicant['college'], $applicant['course'], $applicant['year'], $applicant['section'], $applicant['academicYear'], $approvalTime, $applicant['drivers_license'], $applicant['additional_driver_name'], $applicant['additional_driver_relationship']);
                 $stmt->execute();
 
                 foreach ($vehicles as $vehicle) {
@@ -268,8 +269,20 @@ include_once '../includes/header.php';
                         <span class="info-value">
                             <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $applicant['employment_type']))); ?>
                         </span>
-    </div>
-<?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($applicant['additional_driver_name']) || !empty($applicant['additional_driver_relationship'])): ?>
+                    <div class="info-item">
+                        <span class="info-label">Additional Driver:</span>
+                        <span class="info-value">
+                            <?php echo htmlspecialchars($applicant['additional_driver_name'] ?? ''); ?>
+                            <?php if (!empty($applicant['additional_driver_relationship'])): ?>
+                                <span class="muted">(<?php echo htmlspecialchars($applicant['additional_driver_relationship']); ?>)</span>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 

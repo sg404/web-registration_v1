@@ -389,7 +389,18 @@ function viewVehicle(plateNum) {
             <p><strong>Car Pass ID:</strong> ${data.vehicle.carpassid || 'Not Assigned'}</p>
             ${additionalDriverHtml}
           `;
-                document.getElementById('viewModal').style.display = 'block';
+                // Center the vehicle details inside the modal
+                const content = document.getElementById('viewContent');
+                if (content) {
+                  content.style.textAlign = 'center';
+                }
+                const modalContent = document.querySelector('#viewModal .modal-content');
+                if (modalContent) {
+                  modalContent.style.display = 'flex';
+                  modalContent.style.flexDirection = 'column';
+                  modalContent.style.alignItems = 'center';
+                }
+                document.getElementById('viewModal').style.display = 'flex';
             } else {
                 alert('Error: ' + data.message);
             }

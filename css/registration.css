@@ -170,14 +170,14 @@ h3 {
   align-items: center; /* Centers the radio button with the text vertically */
   gap: 10px;
   padding: 10px 15px;
-  background: #f8f9fa;
+  background: transparent; /* remove rectangular background behind radios */
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.12s ease, color 0.12s ease;
   width: auto;         /* Ensures it only takes required space */
 }
 .checkbox-group label:hover {
-  background: #e9ecef;
+  background: rgba(0,0,0,0.03); /* subtle hover only, transparent by default */
 }
 /* Update this section in registration.css */
 .checkbox-group input[type="radio"] {
@@ -186,14 +186,77 @@ h3 {
   -moz-appearance: none;
   width: 18px;         /* Specific width */
   height: 18px;        /* Specific height */
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  box-sizing: content-box;
+  display: inline-block;
+  vertical-align: middle;
   flex-shrink: 0;      /* Prevents elongation in flex containers */
+  align-self: center;    /* Keep radio centered inside taller labels */
   border: 2px solid #ccc;
   border-radius: 50%;
   background: white;
   cursor: pointer;
   position: relative;
   margin: 0;
+  padding: 0; /* Ensure no internal padding */
+  line-height: normal; /* Prevent inherited line-height from stretching */
   outline: none;
+}
+
+/* VERY SPECIFIC OVERRIDE for mobile and stubborn browsers */
+.checkbox-group label input[type="radio"],
+.checkbox-group input[type="radio"] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-block !important;
+  line-height: normal !important;
+  font-size: 0 !important; /* Prevent inherited font-size from altering rendering */
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+}
+
+/* iOS Safari specific fallback - force inline-flex centering and zero line-height */
+@supports (-webkit-overflow-scrolling: touch) {
+  .checkbox-group label input[type="radio"],
+  .checkbox-group input[type="radio"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+  }
+}
+
+/* Slightly smaller on very small viewports to keep visual balance */
+@media screen and (max-width: 480px) {
+  .checkbox-group label input[type="radio"],
+  .checkbox-group input[type="radio"] {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+  }
+  .checkbox-group label {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }
 .checkbox-group input[type="radio"]:focus {
   outline: none;
@@ -215,6 +278,14 @@ h3 {
   height: 6px;
   background: white;
   border-radius: 50%;
+}
+
+/* Ensure the inner dot scales on very small screens */
+@media screen and (max-width: 480px) {
+  .checkbox-group input[type="radio"]:checked::before {
+    width: 5px;
+    height: 5px;
+  }
 }
 
 .grid-2,

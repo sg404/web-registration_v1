@@ -41,9 +41,101 @@ $conn = $db->getConnection();
 try {
     $conn->begin_transaction();
 
-    // Handle RFID if provided
+    // Fetch the latest approved application row to be issued (matching plate number)
+    $appQuery = "SELECT * FROM applications WHERE plateNum = ? AND registrationStatus = 'approved' FOR UPDATE";
+    $appStmt = $conn->prepare($appQuery);
+    $appStmt->bind_param("s", $plateNum);
+    $appStmt->execute();
+    $appResult = $appStmt->get_result();
+
+    if ($appResult->num_rows === 0) {
+        throw new Exception('No matching approved application found');
+    }
+
+    $application = $appResult->fetch_assoc();
+
+    // Use existing Owner if present; otherwise create Owner record
+    if (!empty($application['OwnerID'])) {
+        $ownerID = $application['OwnerID'];
+    } else {
+        $result2 = $conn->query("SELECT MAX(CAST(SUBSTRING(OwnerID, 2) AS UNSIGNED)) as max_id FROM vehicleowner WHERE OwnerID LIKE 'O%' FOR UPDATE");
+        $row = $result2->fetch_assoc();
+        $nextId = ($row['max_id'] ?? 0) + 1;
+        $ownerID = 'O' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
+        $approvalTime = date('Y-m-d H:i:s');
+
+        // Insert owner (registration_code is no longer recorded from the application)
+        $stmt = $conn->prepare("INSERT INTO vehicleowner (OwnerID, fName, lName, mName, role, email, contact_num, schoolID, college, course, year, section, academicYear, employment_type, registrationStatus, drivers_license, additional_driver_name, additional_driver_relationship, approvalTimestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)");
+        $stmt->bind_param(
+            "sssssssssssssssssss",
+            $ownerID,
+            $application['fName'],
+            $application['lName'],
+            $application['mName'],
+            $application['role'],
+            $application['email'],
+            $application['contact_num'],
+            $application['schoolID'],
+            $application['college'],
+            $application['course'],
+            $application['year'],
+            $application['section'],
+            $application['academicYear'],
+            $application['employment_type'],
+            $application['drivers_license'],
+            $application['additional_driver_name'],
+            $application['additional_driver_relationship'],
+            $approvalTime
+        );
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert vehicle owner');
+        }
+    }
+
+    // If a vehicle record already exists for this plate, update its OwnerID if missing; otherwise insert a vehicle record
+    $checkVehicleStmt = $conn->prepare("SELECT * FROM vehicle WHERE plateNum = ? FOR UPDATE");
+    $checkVehicleStmt->bind_param("s", $application['plateNum']);
+    $checkVehicleStmt->execute();
+    $vehicleResult = $checkVehicleStmt->get_result();
+
+    if ($vehicleResult->num_rows > 0) {
+        // Vehicle exists, ensure OwnerID is set correctly
+        $updateVehicleStmt = $conn->prepare("UPDATE vehicle SET OwnerID = ? WHERE plateNum = ?");
+        $updateVehicleStmt->bind_param("ss", $ownerID, $application['plateNum']);
+        if (!$updateVehicleStmt->execute()) {
+            throw new Exception('Failed to update existing vehicle with OwnerID');
+        }
+    } else {
+        // Insert vehicle record
+        $stmt = $conn->prepare("INSERT INTO vehicle (plateNum, OwnerID, vehicleType, model, manufacturer, color, cubicCapacity, numOfWheels, fuelType, offical_receipt, cert_of_registration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param(
+            "sssssssisss",
+            $application['plateNum'],
+            $ownerID,
+            $application['vehicleType'],
+            $application['model'],
+            $application['manufacturer'],
+            $application['color'],
+            $application['cubicCapacity'],
+            $application['numOfWheels'],
+            $application['fuelType'],
+            $application['offical_receipt'],
+            $application['cert_of_registration']
+        );
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert vehicle');
+        }
+    }
+
+    // Update application to reflect issuance (OwnerID may be existing or newly created)
+    $updateApp = $conn->prepare("UPDATE applications SET registrationStatus = 'issued', OwnerID = ? WHERE applicationID = ?");
+    $updateApp->bind_param("si", $ownerID, $application['applicationID']);
+    if (!$updateApp->execute()) {
+        throw new Exception('Failed to update application after issuance');
+    }
+
+    // Handle RFID tag assignment (same checks as before)
     if (!empty($stickerID)) {
-        // Check if RFID tag is available in rfidtag table
         $checkRfidQuery = "SELECT status FROM rfidtag WHERE stickerID = ?";
         $checkRfidStmt = $conn->prepare($checkRfidQuery);
         $checkRfidStmt->bind_param("s", $stickerID);

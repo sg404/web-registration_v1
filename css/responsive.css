@@ -44,6 +44,9 @@
   .checkbox-group label {
     width: 100%;
     justify-content: flex-start;
+    background: transparent; /* ensure no rectangle on narrow viewports */
+    padding-left: 12px; /* keep touch area without a background block */
+    padding-right: 12px;
   }
   
   /* Upload Areas */
@@ -93,8 +96,15 @@ input:focus, select:focus, button:focus {
 
 /* Improved Touch Targets */
 @media (pointer: coarse) {
-  input, select, button, .checkbox-group label {
+  /* Avoid applying min-height to radio inputs and let labels keep flexible height. Use padding on labels instead for touch targets. */
+  input:not([type="radio"]), select, button {
     min-height: 44px;
+  }
+
+  /* Increase vertical padding for checkbox labels so they remain easy to tap without stretching internal controls */
+  .checkbox-group label {
+    padding-top: 12px;
+    padding-bottom: 12px;
   }
   
   .upload-area {

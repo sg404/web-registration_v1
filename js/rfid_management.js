@@ -10,12 +10,10 @@ if (searchPending) {
     rows.forEach(row => {
       if (row.querySelector('.no-data')) return;
       
-      const uniqueCode = row.cells[0].textContent.toLowerCase(); 
-      const name = row.cells[1].textContent.toLowerCase();    
-      const plate = row.cells[2].textContent.toLowerCase();    
+      const name = (row.cells[0] && row.cells[0].textContent) ? row.cells[0].textContent.toLowerCase() : '';
+      const plate = (row.cells[1] && row.cells[1].textContent) ? row.cells[1].textContent.toLowerCase() : '';
 
-      row.style.display = (uniqueCode.includes(searchValue) || name.includes(searchValue) || plate.includes(searchValue)) 
-                          ? '' : 'none';
+      row.style.display = (name.includes(searchValue) || plate.includes(searchValue)) ? '' : 'none';
     });
   });
 }
@@ -53,14 +51,20 @@ if (searchPending) {
   // Issue RFID Buttons (Opening Modal)
   document.querySelectorAll('.btn-issue').forEach(btn => {
     btn.addEventListener('click', function () {
-      const plateNum = this.getAttribute('data-id');
+        const plateNum = this.getAttribute('data-plate');
+      const appId = this.getAttribute('data-appid');
       document.getElementById('plateNumInput').value = plateNum;
+      // Registration codes are no longer used on applications; clear any code field
+      document.getElementById('registrationCodeInput').value = '';
       document.getElementById('vehiclePlateDisplay').textContent = plateNum;
       loadAvailableRfidTags();
       loadAvailableCarpass();
+      // Store application id on the confirm button for reference
       if (issueRfidPopup) issueRfidPopup.style.display = 'block';
     });
   });
+
+  // Registration codes are auto-sent on approval; manual send/resend removed to avoid duplicate emails.
 
   // Revoke RFID Buttons
   // Use delegation for revocation buttons if they are dynamic, but here they seem static in PHP loop.
@@ -118,6 +122,8 @@ if (searchPending) {
       window.location.reload();
     });
   }
+
+
 
 });
 
@@ -223,7 +229,25 @@ function confirmIssueRfid() {
         document.getElementById('successDescription').textContent = 'The RFID tag and car pass have been assigned to the vehicle.';
         document.getElementById('successPopup').style.display = 'block';
       } else {
-        alert('Error: ' + response.message);
+        // If server reports the car pass ID was already assigned (race or inconsistent data), remove it from the dropdown and reload available list
+        const msg = response.message || '';
+        if (/car pass|carpass/i.test(msg) && /already assigned/i.test(msg)) {
+          const carpassSelect = document.getElementById('carpassIdInput');
+          const selected = carpassSelect ? carpassSelect.value : null;
+
+          // Remove the offending option if present
+          if (selected) {
+            const opt = carpassSelect.querySelector(`option[value="${selected}"]`);
+            if (opt) opt.remove();
+          }
+
+          // Reload the available list to reflect current state
+          loadAvailableCarpass();
+
+          alert('Selected Car Pass ID is no longer available and has been removed. Please choose another.');
+        } else {
+          alert('Error: ' + response.message);
+        }
       }
     })
     .catch(error => console.error('Error issuing RFID:', error));

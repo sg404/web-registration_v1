@@ -8,7 +8,7 @@ $conn = $db->getConnection();
 if (isset($_GET['plateNum'])) {
     $plateNum = $_GET['plateNum'];
 
-    $query = "SELECT v.*, vo.fName, vo.lName, vo.email, r.issuedAt, r.expirationDate 
+    $query = "SELECT v.*, vo.fName, vo.lName, vo.email, r.issuedBy AS rfidIssuedBy, r.status AS rfidStatus 
               FROM vehicle v 
               LEFT JOIN vehicleowner vo ON v.OwnerID = vo.OwnerID 
               LEFT JOIN rfidtag r ON v.stickerID = r.stickerID

@@ -2,6 +2,8 @@
 // Set content type to JSON
 session_start();
 header('Content-Type: application/json');
+// Start server-side timer to measure processing latency for diagnostics
+$serverStart = microtime(true);
 
 // Check authentication
 // Note: While this file is public for registration submission, the 'approve'/'reject' actions should be protected.
@@ -54,7 +56,7 @@ if (isset($_POST['action']) && isset($_POST['id'])) {
             $conn->begin_transaction();
 
             try {
-                // Get all applications for this user FOR UPDATE (Locking the rows)
+                        // Get all applications for this user FOR UPDATE (Locking the rows)
                 $query = "SELECT * FROM applications WHERE fName = ? AND lName = ? AND email = ? FOR UPDATE";
                 $stmt = $conn->prepare($query);
                 $stmt->bind_param("sss", $firstApp['fName'], $firstApp['lName'], $firstApp['email']);
@@ -65,77 +67,21 @@ if (isset($_POST['action']) && isset($_POST['id'])) {
                     $applications[] = $row;
                 }
 
-                $result2 = $conn->query("SELECT MAX(CAST(SUBSTRING(OwnerID, 2) AS UNSIGNED)) as max_id FROM vehicleowner WHERE OwnerID LIKE 'O%' FOR UPDATE");
-                $row = $result2->fetch_assoc();
-                $nextId = ($row['max_id'] ?? 0) + 1;
-                $ownerID = 'O' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
-                $approvalTime = date('Y-m-d H:i:s'); // Assuming timezone is set in dbConnection or global config, if not, it uses server time. 
-                // We should probably set timezone here too if we want consistency, but database insert usually uses server time or passed time.
-                // review_application.php sets 'Asia/Manila'. Let's do it here too just in case.
-                date_default_timezone_set('Asia/Manila');
-                $approvalTime = date('Y-m-d H:i:s');
+                // Approve application: set registrationStatus to 'approved' and record reviewer. We no longer generate or email registration codes from the application.
+                $updateQuery = "UPDATE applications SET registrationStatus = 'approved', reviewed_by = ? WHERE fName = ? AND lName = ? AND email = ?";
+                $updateStmt = $conn->prepare($updateQuery);
+                $updateStmt->bind_param("ssss", $reviewedBy, $firstApp['fName'], $firstApp['lName'], $firstApp['email']);
 
-                // Insert into vehicleowner table
-                $stmt = $conn->prepare("INSERT INTO vehicleowner (OwnerID, fName, lName, mName, role, email, contact_num, schoolID, college, course, year, section, academicYear, employment_type, registrationStatus, drivers_license, additional_driver_name, additional_driver_relationship, approvalTimestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)");
-                // Added approvalTimestamp to insert
-                // Note: The previous insert statement didn't have approvalTimestamp in VALUES list despite review_application.php having it.
-                // Wait, process_registration.php insert didn't have it. I should add it.
-                // bind_param: 18 s -> 19 s
-                $stmt->bind_param(
-                    "sssssssssssssssssss",
-                    $ownerID,
-                    $firstApp['fName'],
-                    $firstApp['lName'],
-                    $firstApp['mName'],
-                    $firstApp['role'],
-                    $firstApp['email'],
-                    $firstApp['contact_num'],
-                    $firstApp['schoolID'],
-                    $firstApp['college'],
-                    $firstApp['course'],
-                    $firstApp['year'],
-                    $firstApp['section'],
-                    $firstApp['academicYear'],
-                    $firstApp['employment_type'],
-                    $firstApp['drivers_license'],
-                    $firstApp['additional_driver_name'],
-                    $firstApp['additional_driver_relationship'],
-                    $approvalTime
-                );
-                $stmt->execute();
-
-                // Process all vehicles for this owner
-                foreach ($applications as $app) {
-                    $stmt = $conn->prepare("INSERT INTO vehicle (plateNum, OwnerID, vehicleType, model, manufacturer, color, cubicCapacity, numOfWheels, fuelType, offical_receipt, cert_of_registration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->bind_param(
-                        "sssssssisss",
-                        $app['plateNum'],
-                        $ownerID,
-                        $app['vehicleType'],
-                        $app['model'],
-                        $app['manufacturer'],
-                        $app['color'],
-                        $app['cubicCapacity'],
-                        $app['numOfWheels'],
-                        $app['fuelType'],
-                        $app['offical_receipt'],
-                        $app['cert_of_registration']
-                    );
-                    $stmt->execute();
+                if ($updateStmt->execute()) {
+                    $conn->commit();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Application approved successfully.'
+                    ]);
+                } else {
+                    $conn->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Error updating application status.']);
                 }
-
-                // Update application status for all applications of this user
-                $stmt = $conn->prepare("UPDATE applications SET registrationStatus = 'approved', reviewed_by = ? WHERE fName = ? AND lName = ? AND email = ?");
-                $stmt->bind_param("ssss", $reviewedBy, $firstApp['fName'], $firstApp['lName'], $firstApp['email']);
-                $stmt->execute();
-
-                // Commit transaction
-                $conn->commit();
-
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Application approved successfully'
-                ]);
 
             } catch (Exception $e) {
                 // Rollback transaction on error
@@ -272,15 +218,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     break;
                 }
 
-                // Check if plate number already exists in vehicle table or applications table
-                $plateCheckStmt = $conn->prepare("SELECT COUNT(*) as count FROM vehicle WHERE plateNum = ? UNION ALL SELECT COUNT(*) as count FROM applications WHERE plateNum = ?");
+                // Check if plate number already exists in vehicle table or applications table (single aggregated count for performance)
+                $plateCheckStmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM vehicle WHERE plateNum = ?) + (SELECT COUNT(*) FROM applications WHERE plateNum = ?) AS totalCount");
                 $plateCheckStmt->bind_param("ss", $plateNumber, $plateNumber);
                 $plateCheckStmt->execute();
                 $plateResult = $plateCheckStmt->get_result();
-                $totalCount = 0;
-                while ($row = $plateResult->fetch_assoc()) {
-                    $totalCount += $row['count'];
-                }
+                $row = $plateResult->fetch_assoc();
+                $totalCount = (int) ($row['totalCount'] ?? 0);
 
                 if ($totalCount > 0) {
                     $response['message'] = "Plate number '" . $plateNumber . "' is already registered or pending approval";
@@ -404,6 +348,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $response['message'] = "System error: " . $e->getMessage();
     }
 }
+
+// Include server processing time (ms) for debugging and UX
+$response['server_duration_ms'] = isset($serverStart) ? round((microtime(true) - $serverStart) * 1000) : null;
 
 // Return JSON response
 echo json_encode($response);

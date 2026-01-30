@@ -7,8 +7,8 @@ try {
     $db = new Database();
     $conn = $db->getConnection();
 
-    // Get all available car passes from vehiclepass table
-    $query = "SELECT passID FROM vehiclepass WHERE status = 'available' ORDER BY passID";
+    // Get all available car passes from vehiclepass table and ensure not currently assigned to any vehicle
+    $query = "SELECT vp.passID FROM vehiclepass vp WHERE vp.status = 'available' AND NOT EXISTS (SELECT 1 FROM vehicle v WHERE v.carpassid = vp.passID AND v.carpassid <> '') ORDER BY vp.passID";
     $result = $conn->query($query);
 
     $availableCarpass = [];

@@ -281,7 +281,14 @@ userTypeRadios.forEach(radio => {
             }
 
             // Submit form with AJAX
-            const formData = new FormData(this);
+            // Disable the submit button and show submitting state to prevent duplicate submissions and give user feedback
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.dataset.originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Submitting...';
+                submitBtn.classList.add('loading');
+            }
 
             // Enable disabled fields before form submission data collection
             // Note: FormData handles this, but disabled fields are typically not included.
@@ -310,6 +317,12 @@ userTypeRadios.forEach(radio => {
                 finalFormData.set('section', '');
             }
 
+            // Add a small client-side timestamp for diagnostics
+            finalFormData.set('clientTS', Date.now());
+
+            // Start client timer for UX diagnostics
+            const submitStart = (window.performance && performance.now) ? performance.now() : Date.now();
+
             fetch('process_registration.php', {
                 method: 'POST',
                 body: finalFormData
@@ -321,17 +334,45 @@ userTypeRadios.forEach(radio => {
                     return response.json();
                 })
                 .then(data => {
+                    // Compute client-side elapsed
+                    const clientElapsed = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - submitStart);
+
+                    // Re-enable the submit button and restore text
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = submitBtn.dataset.originalText || 'Submit Application';
+                        submitBtn.classList.remove('loading');
+                    }
+
                     if (data.success) {
-                        // Show success popup
+                        // Show success popup and display timing info
                         const successPopup = document.getElementById('successPopup');
+                        const timingEl = document.getElementById('submissionTiming');
+                        if (timingEl) {
+                            let serverMsg = data.server_duration_ms ? ('Server: ' + data.server_duration_ms + ' ms') : '';
+                            timingEl.textContent = 'Client: ' + clientElapsed + ' ms' + (serverMsg ? ' · ' + serverMsg : '');
+                        }
                         if (successPopup) successPopup.style.display = 'flex';
                     } else {
                         alert('Error: ' + data.message);
+                        const timingEl = document.getElementById('submissionTiming');
+                        if (timingEl) timingEl.textContent = 'Client: ' + clientElapsed + ' ms' + (data.server_duration_ms ? (' · Server: ' + data.server_duration_ms + ' ms') : '');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('An error occurred while submitting the form');
+
+                    // Compute client-side elapsed
+                    const clientElapsed = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - submitStart);
+                    const timingEl = document.getElementById('submissionTiming');
+                    if (timingEl) timingEl.textContent = 'Client: ' + clientElapsed + ' ms';
+
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = submitBtn.dataset.originalText || 'Submit Application';
+                        submitBtn.classList.remove('loading');
+                    }
                 });
         });
     }

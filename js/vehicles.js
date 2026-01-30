@@ -67,66 +67,91 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Modal Opening Functionality
+   // === Modal Opening Logic ===
 
-    // Add Vehicle
-    const addBtn = document.querySelector('.add-btn');
-    if (addBtn) {
-        addBtn.addEventListener('click', function () {
-            document.getElementById('addModal').style.display = 'block';
-        });
-    }
-
-    // View data buttons
-    document.querySelectorAll('.btn-view').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const plateNum = this.getAttribute('data-plate');
-            viewVehicle(plateNum);
-        });
-    });
-
-    // Edit buttons
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const plateNum = this.getAttribute('data-plate');
-            editVehicle(plateNum);
-        });
-    });
-
-    // Delete buttons
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const plateNum = this.getAttribute('data-plate');
-            document.getElementById('deleteVehiclePlateNum').value = plateNum;
-            document.getElementById('deleteVehicleModal').style.display = 'block';
-        });
-    });
-
-    // View Violations buttons
-    document.querySelectorAll('.violation-badge').forEach(badge => {
-        badge.addEventListener('click', function () {
-            const plateNum = this.getAttribute('data-plate');
-            viewViolations(plateNum);
-        });
-    });
-
-    // Close modals
-    document.querySelectorAll('.close, .btn-cancel').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const modal = this.closest('.modal');
-            if (modal) modal.style.display = 'none';
-            // Clear passwords
-            const pwFields = document.querySelectorAll('input[type="password"]');
-            pwFields.forEach(f => f.value = '');
-        });
-    });
-
-    // Close on click outside
-    window.addEventListener('click', function (event) {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
+// Add Vehicle Button
+        const addBtn = document.querySelector('.add-btn');
+        if (addBtn) {
+            addBtn.addEventListener('click', function () {
+                // Updated to flex for centering
+                document.getElementById('addModal').style.display = 'flex';
+            });
         }
-    });
+
+        /**
+         * Universal function to open modals with flex centering
+         * @param {string} modalId - The ID of the modal element
+         */
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'flex'; // Ensures CSS centering works
+            }
+        }
+
+        // View data buttons
+        document.querySelectorAll('.btn-view').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const plateNum = this.getAttribute('data-plate');
+                // Ensure the view modal uses flex when opened inside viewVehicle
+                viewVehicle(plateNum); 
+                openModal('viewModal');
+            });
+        });
+
+        // Edit buttons
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const plateNum = this.getAttribute('data-plate');
+                editVehicle(plateNum);
+                // Ensure the edit modal uses flex
+                openModal('editModal');
+            });
+        });
+
+        // Delete buttons
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const plateNum = this.getAttribute('data-plate');
+                const deleteModal = document.getElementById('deleteVehicleModal');
+                if (deleteModal) {
+                    document.getElementById('deleteVehiclePlateNum').value = plateNum;
+                    // Updated to flex for centering
+                    deleteModal.style.display = 'flex';
+                }
+            });
+        });
+
+            // View Violations buttons
+            document.querySelectorAll('.violation-badge').forEach(badge => {
+                badge.addEventListener('click', function () {
+                    const plateNum = this.getAttribute('data-plate');
+                    viewViolations(plateNum);
+                });
+            });
+
+            // Close modals - Updated logic
+        document.querySelectorAll('.close, .btn-cancel').forEach(btn => {
+            btn.addEventListener('click', function () {
+                // Find the closest parent modal
+                const modal = this.closest('.modal');
+                if (modal) {
+                    // FIX: Set to 'none' to actually hide the modal
+                    modal.style.display = 'none'; 
+                }
+                
+                // Clear all password fields when a modal is closed for security
+                const pwFields = document.querySelectorAll('input[type="password"]');
+                pwFields.forEach(f => f.value = '');
+            });
+        });
+
+        // Close on click outside - Correct as is
+        window.addEventListener('click', function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
 
     // Handle vehicle type change for add form
     const addVehicleType = document.getElementById('addVehicleType');

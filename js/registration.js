@@ -46,49 +46,80 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.upload-area').forEach(initUploadArea);
 
     // === User Type Logic ===
-    const userTypeRadios = document.querySelectorAll('input[name="userType"]');
+        // === User Type Logic ===
+const userTypeRadios = document.querySelectorAll('input[name="userType"]');
 
-    userTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function () {
-            const courseField = document.getElementById('courseField');
-            const academicYearField = document.getElementById('academicYearField');
-            const yearLevelField = document.getElementById('yearLevelField');
-            const sectionField = document.getElementById('sectionField');
+userTypeRadios.forEach(radio => {
+    radio.addEventListener('change', function () {
+        const registrationForm = document.getElementById('registrationForm');
+        if (!registrationForm) return;
 
-            const employmentTypeField = document.getElementById('employmentTypeField');
+        const selectedValue = this.value;
 
-            if (this.value === 'faculty' || this.value === 'non-teaching') {
-                if (courseField) courseField.style.display = 'none';
-                if (academicYearField) academicYearField.style.display = 'none';
-                if (yearLevelField) yearLevelField.style.display = 'none';
-                if (sectionField) sectionField.style.display = 'none';
-                if (employmentTypeField) employmentTypeField.style.display = 'block';
-
-                const courseSelect = document.querySelector('select[name="course"]');
-                const academicYearSelect = document.querySelector('select[name="academicYear"]');
-                const employmentTypeSelect = document.querySelector('select[name="employment_type"]');
-
-                if (courseSelect) courseSelect.removeAttribute('required');
-                if (academicYearSelect) academicYearSelect.removeAttribute('required');
-                if (employmentTypeSelect) employmentTypeSelect.setAttribute('required', 'required');
-            } else {
-                if (courseField) courseField.style.display = 'block';
-                if (academicYearField) academicYearField.style.display = 'block';
-                if (yearLevelField) yearLevelField.style.display = 'block';
-                if (sectionField) sectionField.style.display = 'block';
-                if (employmentTypeField) employmentTypeField.style.display = 'none';
-
-                const courseSelect = document.querySelector('select[name="course"]');
-                const academicYearSelect = document.querySelector('select[name="academicYear"]');
-                const employmentTypeSelect = document.querySelector('select[name="employment_type"]');
-
-                if (courseSelect) courseSelect.setAttribute('required', 'required');
-                if (academicYearSelect) academicYearSelect.setAttribute('required', 'required');
-                if (employmentTypeSelect) employmentTypeSelect.removeAttribute('required');
+        // 1. Clear all previously entered data
+        registrationForm.querySelectorAll('input, select, textarea').forEach(field => {
+            // Do not clear the radio buttons for role selection, otherwise the click is lost
+            if (field.name !== 'userType' && field.type !== 'submit' && field.type !== 'button') {
+                if (field.type === 'file') {
+                    field.value = ''; 
+                } else if (field.tagName.toLowerCase() === 'select') {
+                    field.selectedIndex = 0; 
+                } else if (field.type === 'checkbox' || field.type === 'radio') {
+                    field.checked = false;
+                } else {
+                    field.value = ''; 
+                }
             }
         });
-    });
 
+        // 2. Remove file name previews from the UI
+        document.querySelectorAll('.file-name').forEach(fn => fn.remove());
+
+        // 3. Reset Terms and Conditions UI
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        const termsStatusText = document.getElementById('termsStatusText');
+        const termsAcceptedIcon = document.getElementById('termsAcceptedIcon');
+        const termsLink = document.getElementById('termsLink');
+
+        if (termsCheckbox) termsCheckbox.value = "";
+        if (termsStatusText) termsStatusText.style.display = 'inline';
+        if (termsLink) termsLink.style.display = 'inline';
+        if (termsAcceptedIcon) termsAcceptedIcon.style.display = 'none';
+
+        // 4. Toggle Field Visibility (Student vs Faculty/Non-Teaching)
+        const courseField = document.getElementById('courseField');
+        const academicYearField = document.getElementById('academicYearField');
+        const yearLevelField = document.getElementById('yearLevelField');
+        const sectionField = document.getElementById('sectionField');
+        const employmentTypeField = document.getElementById('employmentTypeField');
+
+        const courseSelect = document.querySelector('select[name="course"]');
+        const academicYearSelect = document.querySelector('select[name="academicYear"]');
+        const employmentTypeSelect = document.querySelector('select[name="employment_type"]');
+
+        if (selectedValue === 'faculty' || selectedValue === 'non-teaching') {
+            if (courseField) courseField.style.display = 'none';
+            if (academicYearField) academicYearField.style.display = 'none';
+            if (yearLevelField) yearLevelField.style.display = 'none';
+            if (sectionField) sectionField.style.display = 'none';
+            if (employmentTypeField) employmentTypeField.style.display = 'block';
+
+            if (courseSelect) courseSelect.removeAttribute('required');
+            if (academicYearSelect) academicYearSelect.removeAttribute('required');
+            if (employmentTypeSelect) employmentTypeSelect.setAttribute('required', 'required');
+        } else {
+            if (courseField) courseField.style.display = 'block';
+            if (academicYearField) academicYearField.style.display = 'block';
+            if (yearLevelField) yearLevelField.style.display = 'block';
+            if (sectionField) sectionField.style.display = 'block';
+            if (employmentTypeField) employmentTypeField.style.display = 'none';
+
+            if (courseSelect) courseSelect.setAttribute('required', 'required');
+            if (academicYearSelect) academicYearSelect.setAttribute('required', 'required');
+            if (employmentTypeSelect) employmentTypeSelect.removeAttribute('required');
+        }
+    });
+});
     // === College-Course Mapping ===
     let collegeCourses = {};
 

@@ -208,51 +208,70 @@ include_once '../includes/header.php';
             </div>
         </div>
 
-        <div class="review-section">
+        <<div class="review-section">
             <h3>Applicant Information</h3>
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">Full Name:</span>
-                    <span
-                        class="info-value"><?php echo htmlspecialchars($applicant['fName'] . ' ' . $applicant['mName'] . ' ' . $applicant['lName']); ?></span>
+                    <span class="info-value">
+                        <?php echo htmlspecialchars(($applicant['fName'] ?? '') . ' ' . ($applicant['mName'] ?? '') . ' ' . ($applicant['lName'] ?? '')); ?>
+                    </span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Role:</span>
-                    <span class="info-value"><?php echo htmlspecialchars(ucfirst($applicant['role'])); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars(ucfirst($applicant['role'] ?? '')); ?></span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Email:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($applicant['email']); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars($applicant['email'] ?? ''); ?></span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Contact Number:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($applicant['contact_num']); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars($applicant['contact_num'] ?? ''); ?></span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">College:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($applicant['college']); ?></span>
+                    <span class="info-value"><?php echo htmlspecialchars($applicant['college'] ?? ''); ?></span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Course:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($applicant['course']); ?></span>
-                </div>
+
+                <?php if ($applicant['role'] === 'student' && !empty($applicant['course'])): ?>
+                    <div class="info-item">
+                        <span class="info-label">Course:</span>
+                        <span class="info-value"><?php echo htmlspecialchars($applicant['course']); ?></span>
+                    </div>
+                <?php endif; ?>
+
                 <?php if (!empty($applicant['year'])): ?>
                     <div class="info-item">
                         <span class="info-label">Year Level:</span>
                         <span class="info-value"><?php echo htmlspecialchars($applicant['year']); ?></span>
                     </div>
                 <?php endif; ?>
+
                 <?php if (!empty($applicant['section'])): ?>
                     <div class="info-item">
                         <span class="info-label">Section:</span>
                         <span class="info-value"><?php echo htmlspecialchars($applicant['section']); ?></span>
                     </div>
                 <?php endif; ?>
-                <div class="info-item">
-                    <span class="info-label">Academic Year:</span>
-                    <span class="info-value"><?php echo htmlspecialchars($applicant['academicYear']); ?></span>
-                </div>
+
+                <?php if ($applicant['role'] === 'student' && !empty($applicant['academicYear'])): ?>
+                    <div class="info-item">
+                        <span class="info-label">Academic Year:</span>
+                        <span class="info-value"><?php echo htmlspecialchars($applicant['academicYear']); ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (($applicant['role'] === 'faculty' || $applicant['role'] === 'non-teaching') && !empty($applicant['employment_type'])): ?>
+                    <div class="info-item">
+                        <span class="info-label">Employment Status:</span>
+                        <span class="info-value">
+                            <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $applicant['employment_type']))); ?>
+                        </span>
+    </div>
+<?php endif; ?>
             </div>
+        </div>
 
             <div class="document-section">
                 <h4>Driver's License</h4>
@@ -417,7 +436,7 @@ include_once '../includes/header.php';
                 <form method="POST" action="" id="reviewForm">
                     <input type="hidden" name="rejection_reason" id="rejectionReason" value="">
                     <div class="action-buttons">
-                        <button type="button" onclick="showRejectModal()" class="btn-decline">
+                        <button type="button" class="btn-decline" id="declineBtn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10" />
@@ -438,7 +457,6 @@ include_once '../includes/header.php';
                 </form>
             </div>
 
-            <!-- Rejection Modal -->
             <div id="rejectModal" class="modal hidden">
                 <div class="modal-content">
                     <h3>Decline Application</h3>

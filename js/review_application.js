@@ -1,18 +1,6 @@
-// JavaScript for review_application.php
-
 document.addEventListener('DOMContentLoaded', function () {
-    // Image preview enhancement
-    const documentImages = document.querySelectorAll('.document-preview img');
-    documentImages.forEach(img => {
-        img.addEventListener('click', function () {
-            window.open(this.src, '_blank');
-        });
-        img.style.cursor = 'pointer';
-        img.title = 'Click to view full size';
-    });
-
-    // Bind Decline Button
-    const declineBtn = document.querySelector('.btn-decline');
+    // Bind Decline Button via ID to ensure it is clickable
+    const declineBtn = document.getElementById('declineBtn');
     if (declineBtn) {
         declineBtn.addEventListener('click', function (e) {
             e.preventDefault();
@@ -22,12 +10,21 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function showRejectModal() {
-    document.getElementById('rejectModal').style.display = 'flex';
+    const modal = document.getElementById('rejectModal');
+    if (modal) {
+        // Remove 'hidden' class and set display flex for the overlay
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex'; 
+    }
 }
 
 function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
-    document.getElementById('rejectReasonText').value = '';
+    const modal = document.getElementById('rejectModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        document.getElementById('rejectReasonText').value = '';
+    }
 }
 
 function submitRejection() {
@@ -41,15 +38,10 @@ function submitRejection() {
     btn.disabled = true;
     btn.textContent = 'Processing...';
 
+    // Transfer reason to the hidden input in the main form
     document.getElementById('rejectionReason').value = reason;
-    closeRejectModal();
 
-    // Trigger loading animation
-    if (window.loadingAnimation) {
-        window.loadingAnimation.show('reject');
-    }
-
-    // Create a hidden input for the reject action
+    // Create a hidden input to specify the 'reject' action for PHP
     const form = document.getElementById('reviewForm');
     const actionInput = document.createElement('input');
     actionInput.type = 'hidden';

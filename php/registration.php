@@ -13,6 +13,74 @@ require_once 'dbConnection.php';
   <link rel="stylesheet" href="../css/responsive.css" />
   <script src="../js/responsive.js"></script>
   <script src="../js/registration.js" defer></script>
+ <script>
+    // Logic to handle conditional fields based on role selection and contact number validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const userTypeRadios = document.getElementsByName('userType');
+        const employmentField = document.getElementById('employmentTypeField');
+        const employmentSelect = employmentField.querySelector('select');
+        const yearLevelField = document.getElementById('yearLevelField');
+        const sectionField = document.getElementById('sectionField');
+        const contactInput = document.getElementById('contactNum');
+        const contactError = document.getElementById('contactError');
+        const registrationForm = document.getElementById('registrationForm');
+
+        // Function to toggle fields based on User Type
+        function toggleFields() {
+            const checkedRadio = document.querySelector('input[name="userType"]:checked');
+            if (!checkedRadio) return; // Exit if no radio is selected yet
+
+            const selectedType = checkedRadio.value;
+            
+            if (selectedType === 'student') {
+                employmentField.classList.add('hidden');
+                employmentSelect.required = false;
+                employmentSelect.value = "";
+                
+                yearLevelField.classList.remove('hidden');
+                sectionField.classList.remove('hidden');
+            } else {
+                // Faculty or Non-Teaching
+                employmentField.classList.remove('hidden');
+                employmentSelect.required = true;
+                
+                yearLevelField.classList.add('hidden');
+                sectionField.classList.add('hidden');
+            }
+        }
+
+        // Add event listeners for role selection
+        userTypeRadios.forEach(radio => {
+            radio.addEventListener('change', toggleFields);
+        });
+
+        // Contact number real-time numeric validation
+        if (contactInput) {
+            contactInput.addEventListener('input', function() {
+                const originalValue = this.value;
+                // Use regex to remove any character that is not a number (0-9)
+                const cleanedValue = this.value.replace(/[^0-9]/g, '');
+                
+                this.value = cleanedValue;
+
+                // Show error message if invalid characters were stripped
+                if (originalValue !== cleanedValue) {
+                    if (contactError) {
+                        contactError.style.display = 'block';
+                        // Automatically hide the error message after 2 seconds
+                        setTimeout(() => {
+                            contactError.style.display = 'none';
+                        }, 2000);
+                    }
+                } else {
+                    if (contactError) contactError.style.display = 'none';
+                }
+            });
+        }
+        
+        toggleFields();
+    });
+</script>
 </head>
 
 <body>
@@ -24,10 +92,6 @@ require_once 'dbConnection.php';
         </h3>
       </span>
     </div>
-    <!-- <div class="header-right">
-        <a href="login.php" class="login-btn">Login</a>
-        <a href="registration.php" class="register-btn">Register Vehicle</a>
-      </div> -->
   </header>
 
   <div class="container">
@@ -78,9 +142,17 @@ require_once 'dbConnection.php';
             <label>Email Address</label>
             <input type="email" name="email" placeholder="Enter your email address" required />
           </div>
-          <div>
-            <label>Contact Number</label>
-            <input type="text" name="contactNum" placeholder="Enter your contact number" required />
+            <div>
+              <label>Contact Number</label>
+              <input type="text" 
+                    name="contactNum" 
+                    id="contactNum" 
+                    placeholder="Enter your contact number" 
+                    required 
+                    inputmode="numeric">
+              <span id="contactError" style="color: red; font-size: 0.8em; display: none;">
+                  invalid input only numbers
+              </span>
           </div>
         </div>
 
@@ -96,12 +168,24 @@ require_once 'dbConnection.php';
               <option value="CIT">(CIT) College of Industrial Technology</option>
             </select>
           </div>
+          <div id="employmentTypeField" class="hidden">
+            <label>Employment Status</label>
+            <select name="employment_type">
+              <option value="" disabled selected>Select Employment Type</option>
+              <option value="permanent">Permanent</option>
+              <option value="job_hire">Job Hire</option>
+              <option value="part_time">Part-time</option>
+            </select>
+          </div>
           <div id="courseField">
             <label>Course</label>
             <select name="course" id="courseSelect" required>
               <option value="" disabled selected>Select Course</option>
             </select>
           </div>
+        </div>
+
+        <div class="grid-3">
           <div id="academicYearField">
             <label>Academic Year</label>
             <select name="academicYear" required>
@@ -110,21 +194,6 @@ require_once 'dbConnection.php';
               <option value="2026-2027">2026-2027</option>
             </select>
           </div>
-        </div>
-
-        <div class="grid-3">
-          <div id="employmentTypeField" class="hidden">
-            <label>Employment Type</label>
-            <select name="employment_type">
-              <option value="" disabled selected>Select Employment Type</option>
-              <option value="permanent">Permanent</option>
-              <option value="job_hire">Job Hire</option>
-              <option value="part_time">Part-time</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid-3">
           <div id="yearLevelField">
             <label>Year Level (For Students)</label>
             <select name="yearLevel">
@@ -288,7 +357,6 @@ require_once 'dbConnection.php';
     </form>
   </div>
 
-  <!-- Terms and Conditions Modal -->
   <div id="termsModal" class="popup">
     <div class="popup-content terms-content-container">
       <div class="terms-header">
@@ -381,8 +449,6 @@ require_once 'dbConnection.php';
           </div>
         </section>
 
-
-
         <div class="terms-footer">
           <p>End of Document</p>
         </div>
@@ -408,7 +474,6 @@ require_once 'dbConnection.php';
     </div>
   </div>
 
-  <!-- Success Popup -->
   <div id="successPopup" class="popup">
     <div class="popup-content">
       <h3>Registration Submitted Successfully!</h3>

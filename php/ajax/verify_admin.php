@@ -1,57 +1,48 @@
 <?php
-session_start();
+// Include database connection
 require_once '../dbConnection.php';
 
+// Set content type to JSON
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+// Get POST data
+$data = json_decode(file_get_contents('php://input'), true);
+
+if (!$data || !isset($data['username']) || !isset($data['password'])) {
+    echo json_encode(['success' => false, 'message' => 'Invalid request data']);
     exit;
 }
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'SSEDMMO Admin') {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+$username = trim($data['username']);
+$password = $data['password'];
+
+// Validate input
+if (empty($username) || empty($password)) {
+    echo json_encode(['success' => false, 'message' => 'Username and password are required']);
     exit;
 }
 
-$password = $_POST['password'] ?? '';
+// Check admin credentials
+$query = "SELECT userID, username, role FROM user WHERE username = ? AND password = ? AND role = 'admin'";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("ss", $username, $password);
+$stmt->execute();
+$result = $stmt->get_result();
 
-if (empty($password)) {
-    echo json_encode(['success' => false, 'message' => 'Password is required']);
-    exit;
+if ($result && $result->num_rows > 0) {
+    $admin = $result->fetch_assoc();
+    echo json_encode([
+        'success' => true,
+        'message' => 'Login successful',
+        'admin' => [
+            'userID' => $admin['userID'],
+            'username' => $admin['username']
+        ]
+    ]);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid admin credentials']);
 }
 
-try {
-    $db = new Database();
-    $conn = $db->getConnection();
-
-    // Check password against all admin users
-    $stmt = $conn->prepare("SELECT password FROM user WHERE role = 'SSEDMMO Admin'");
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        echo json_encode(['success' => false, 'message' => 'No admin users found']);
-        exit;
-    }
-
-    $passwordValid = false;
-    while ($user = $result->fetch_assoc()) {
-        if (password_verify($password, $user['password'])) {
-            $passwordValid = true;
-            break;
-        }
-    }
-
-    if ($passwordValid) {
-        echo json_encode(['success' => true, 'message' => 'Password verified']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid admin password']);
-    }
-
-    $db->closeConnection();
-
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-}
+$stmt->close();
+$conn->close();
 ?>

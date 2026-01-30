@@ -1,18 +1,24 @@
 document.addEventListener('DOMContentLoaded', function () {
   // Search functionality for pending table
-  const searchPending = document.getElementById('searchPending');
-  if (searchPending) {
-    searchPending.addEventListener('keyup', function () {
-      const searchValue = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#pendingTable tbody tr');
+// Inside web-registration_v1/js/rfid_management.js
+const searchPending = document.getElementById('searchPending');
+if (searchPending) {
+  searchPending.addEventListener('keyup', function () {
+    const searchValue = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#pendingTable tbody tr');
 
-      rows.forEach(row => {
-        if (row.querySelector('.no-data')) return;
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchValue) ? '' : 'none';
-      });
+    rows.forEach(row => {
+      if (row.querySelector('.no-data')) return;
+      
+      const uniqueCode = row.cells[0].textContent.toLowerCase(); 
+      const name = row.cells[1].textContent.toLowerCase();    
+      const plate = row.cells[2].textContent.toLowerCase();    
+
+      row.style.display = (uniqueCode.includes(searchValue) || name.includes(searchValue) || plate.includes(searchValue)) 
+                          ? '' : 'none';
     });
-  }
+  });
+}
 
   // Search functionality for registered table
   const searchRegistered = document.getElementById('searchRegistered');

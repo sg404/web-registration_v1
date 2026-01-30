@@ -205,7 +205,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $academicYear = $_POST['academicYear'];
         $yearLevel = $_POST['yearLevel'] ?? '';
         $section = $_POST['section'] ?? '';
-        $employmentType = $_POST['employment_type'] ?? null;
+        $employmentType = ($userType === 'student') ? null : ($_POST['employment_type'] ?? null);
+
+        // Validate Employment Status for Faculty and Non-Teaching Personnel
+        if (($userType === 'faculty' || $userType === 'non-teaching') && empty($employmentType)) {
+            $response['message'] = "Employment Status is required for Faculty and Non-Teaching Personnel.";
+            $success = false;
+        }
         $additionalDriverName = $_POST['additionalDriverName'] ?? null;
         $additionalDriverRelationship = $_POST['additionalDriverRelationship'] ?? null;
 

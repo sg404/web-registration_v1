@@ -14,15 +14,21 @@ require_once 'dbConnection.php';
 $db = new Database();
 $conn = $db->getConnection();
 
-// Get pending vehicles (without RFID tags)
-$pendingQuery = "SELECT v.*, vo.fName, vo.lName, vo.email 
-                FROM vehicle v 
-                JOIN vehicleowner vo ON v.OwnerID = vo.OwnerID 
-                WHERE v.stickerID IS NULL OR v.stickerID = ''
-                ORDER BY vo.lName, vo.fName";
+// 1. Get pending vehicles enhanced with Registration Code and Date Sorting
+$pendingQuery = "SELECT a.*, v.plateNum 
+                FROM applications a
+                JOIN vehicle v ON a.plateNum = v.plateNum
+                WHERE a.registrationStatus = 'approved' 
+                AND (v.stickerID IS NULL OR v.stickerID = '')
+                ORDER BY a.applicationDate DESC"; // Sorting by most recent first
 $pendingResult = $conn->query($pendingQuery);
 
-// Get registered vehicles (with RFID tags) - simplified query for new table structure
+// Error Handling to prevent the 'bool' error
+if (!$pendingResult) {
+    die("Query Failed: " . $conn->error);
+}
+
+// 2. Get registered vehicles
 $registeredQuery = "SELECT v.*, vo.fName, vo.lName, vo.email, r.status as rfidStatus, r.issuedBy 
                    FROM vehicle v 
                    JOIN vehicleowner vo ON v.OwnerID = vo.OwnerID 
@@ -71,13 +77,12 @@ include_once '../includes/header.php';
         <div class="card-title-section">
           <h4 class="card-title">Pending Physical Verification</h4>
           <p>
-            Approved applications awaiting document verification and RFID
-            tag issuance
+            Approved applications awaiting document verification and RFID tag issuance
           </p>
         </div>
         <div class="search-area">
           <div class="search-box">
-            <input type="text" id="searchPending" placeholder="Search by owner name or plate number..." />
+            <input type="text" id="searchPending" placeholder="Search by name, plate, or code..." />
             <button class="search-btn" type="submit" title="Search">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -90,40 +95,45 @@ include_once '../includes/header.php';
         </div>
       </div>
       <table class="rfid-table" id="pendingTable">
-        <thead>
-          <tr>
-            <th>Owner</th>
-            <th>Plate Number</th>
-            <th>Vehicle Type</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if ($pendingResult && $pendingResult->num_rows > 0): ?>
-            <?php while ($row = $pendingResult->fetch_assoc()): ?>
-              <tr>
-                <td>
-                  <div class="owner-info">
-                    <strong><?php echo htmlspecialchars($row['fName'] . ' ' . $row['lName']); ?></strong>
-                    <span class="owner-email"><?php echo htmlspecialchars($row['email']); ?></span>
-                  </div>
-                </td>
-                <td><span class="plate-number"><?php echo htmlspecialchars($row['plateNum']); ?></span></td>
-                <td><span class="vehicle-type"><?php echo htmlspecialchars($row['vehicleType']); ?></span></td>
-                <td>
-                  <div class="action-buttons">
-                    <button class="btn-issue" data-id="<?php echo $row['plateNum']; ?>">Issue RFID & Car Pass</button>
-                  </div>
-                </td>
-              </tr>
-            <?php endwhile; ?>
-          <?php else: ?>
-            <tr>
-              <td colspan="4" class="no-data">No pending vehicles found</td>
-            </tr>
-          <?php endif; ?>
-        </tbody>
-      </table>
+  <thead>
+    <tr>
+      <th>Unique Registration Code</th> <th>Owner</th>
+      <th>Plate Number</th>
+      <th>Vehicle Type</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php if ($pendingResult && $pendingResult->num_rows > 0): ?>
+      <?php while ($row = $pendingResult->fetch_assoc()): ?>
+        <tr>
+          <td>
+            <code style="background: #eef2ff; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #1e40af;">
+              <?php echo htmlspecialchars($row['registration_code'] ?? 'PENDING'); ?>
+            </code>
+          </td>
+          <td>
+            <div class="owner-info">
+              <strong><?php echo htmlspecialchars($row['fName'] . ' ' . $row['lName']); ?></strong>
+              <span class="owner-email" style="display:block; font-size: 0.8rem; color: #6c757d;">
+                Submitted: <?php echo date('M d, Y', strtotime($row['applicationDate'])); ?>
+              </span>
+            </div>
+          </td>
+          <td><span class="plate-number"><?php echo htmlspecialchars($row['plateNum']); ?></span></td>
+          <td><span class="vehicle-type"><?php echo htmlspecialchars($row['vehicleType']); ?></span></td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-issue" data-id="<?php echo $row['plateNum']; ?>">Issue RFID & Car Pass</button>
+            </div>
+          </td>
+        </tr>
+      <?php endwhile; ?>
+    <?php else: ?>
+      <tr><td colspan="5" class="no-data">No pending records found</td></tr>
+    <?php endif; ?>
+  </tbody>
+</table>
     </div>
 
     <div class="card">
@@ -187,7 +197,6 @@ include_once '../includes/header.php';
   </div>
 </main>
 
-<!-- Issue RFID & Car Pass Popup -->
 <div id="issueRfidPopup" class="popup-overlay">
   <div class="popup-content minimal-modal">
     <h3>Issue RFID & Car Pass to <span id="vehiclePlateDisplay"></span></h3>
@@ -205,7 +214,6 @@ include_once '../includes/header.php';
   </div>
 </div>
 
-<!-- Add RFID Modal -->
 <div id="addRfidModal" class="popup-overlay">
   <div class="popup-content">
     <h3>Add New RFID Tag</h3>
@@ -218,9 +226,6 @@ include_once '../includes/header.php';
   </div>
 </div>
 
-
-
-<!-- Success Popup -->
 <div id="successPopup" class="popup-overlay">
   <div class="popup-content success-popup">
     <div class="success-icon">✓</div>
